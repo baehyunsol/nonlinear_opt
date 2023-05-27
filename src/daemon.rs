@@ -19,7 +19,7 @@ pub struct Daemon<T> {
 
     /// It's a function: `y = f(x)`. The first argument is its parameters and the second one is `x`.
     /// If not set, it's a polynomial (ax^7 + bx^6 + cx^5 + dx^4 + ex^3 + fx^2 + gx + h). Frequently used options are defined in `regression::funcs`.
-    pub objective_function: fn([f64; 8], T) -> f64,
+    pub objective_function: fn(Vec<f64>, T) -> f64,
 
     /// How often it prints the progress (in milliseconds). If it's 0, it doesn't print anything. If not set, it's 2000.
     pub print_cycle: usize,
@@ -36,24 +36,24 @@ pub struct Daemon<T> {
 
 impl<T: Clone + Send + 'static> Daemon<T> {
 
-    pub fn new(load_progress_from: String, data: Vec<(T, f64)>, objective_function: fn([f64; 8], T) -> f64) -> Self {
+    pub fn new(load_progress_from: String, data: Vec<(T, f64)>, objective_function: fn(Vec<f64>, T) -> f64, num_params: usize) -> Self {
         let print_cycle = 2000;
-        let num_params = 8;
+        let num_params = num_params;
         let num_workers = 8;
         let goal_mse = 0.0;
         let quiet = false;
 
         let state = match read(&load_progress_from) {
-            Ok(bytes) => match State::deserialize(&bytes) {
+            Ok(bytes) => match State::deserialize(&bytes, num_params) {
                 Ok(s) => s,
                 _ => {
                     if !quiet { println!("The file `{load_progress_from}` is corrupted, creating a default state..."); }
-                    State::default()
+                    State::new(vec![0.0; num_params], vec![2.0; num_params])
                 }
             },
             _ => {
                 if !quiet { println!("Failed to read the file `{load_progress_from}`, creating a default state..."); }
-                State::default()
+                State::new(vec![0.0; num_params], vec![2.0; num_params])
             }
         };
 
@@ -62,13 +62,13 @@ impl<T: Clone + Send + 'static> Daemon<T> {
         }
     }
 
-    pub fn init_state(&mut self, params: [f64; 8], dists: [f64; 8]) {
+    pub fn init_state(&mut self, params: Vec<f64>, dists: Vec<f64>) {
         self.state = State::new(params, dists);
     }
 
     pub fn run(&mut self) {
         let stepss = init_stepss(self.num_params);
-        let mut channels = init_workers(self.data.clone(), self.objective_function, self.num_workers, self.num_params);
+        let mut channels = init_workers(self.data.clone(), self.objective_function, self.num_workers);
         self.print("Worker Initialization Complete!");
 
         let mut curr_state = self.state.clone();
@@ -90,7 +90,7 @@ impl<T: Clone + Send + 'static> Daemon<T> {
                 }
 
                 self.state = curr_state;
-                channels = init_workers(self.data.clone(), self.objective_function, self.num_workers, self.num_params);
+                channels = init_workers(self.data.clone(), self.objective_function, self.num_workers);
                 self.print("Worker Initialization Complete!");
             }
 

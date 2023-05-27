@@ -4,15 +4,15 @@ use crate::consts::*;
 
 #[derive(Clone, Debug)]
 pub struct State {
-    pub params: [f64; 8],
-    pub dists: [f64; 8],
+    pub params: Vec<f64>,
+    pub dists: Vec<f64>,
     pub mse: f64,
     pub epoch: usize
 }
 
 impl State {
 
-    pub fn new(params: [f64; 8], dists: [f64; 8]) -> Self {
+    pub fn new(params: Vec<f64>, dists: Vec<f64>) -> Self {
         State {
             params, dists,
             mse: f64::MAX,
@@ -50,35 +50,30 @@ impl State {
         result
     }
 
-    pub fn deserialize(vec: &[u8]) -> Result<Self, ()> {
+    pub fn deserialize(vec: &[u8], num_params: usize) -> Result<Self, ()> {
 
-        if vec.len() != 144 {
+        if vec.len() != 16 * num_params + 16 {
             Err(())
         }
 
         else {
-            let params = [
-                u64_to_f64(u8s_to_u64(&vec[0..8])),
-                u64_to_f64(u8s_to_u64(&vec[8..16])),
-                u64_to_f64(u8s_to_u64(&vec[16..24])),
-                u64_to_f64(u8s_to_u64(&vec[24..32])),
-                u64_to_f64(u8s_to_u64(&vec[32..40])),
-                u64_to_f64(u8s_to_u64(&vec[40..48])),
-                u64_to_f64(u8s_to_u64(&vec[48..56])),
-                u64_to_f64(u8s_to_u64(&vec[56..64])),
-            ];
-            let dists = [
-                u64_to_f64(u8s_to_u64(&vec[64..72])),
-                u64_to_f64(u8s_to_u64(&vec[72..80])),
-                u64_to_f64(u8s_to_u64(&vec[80..88])),
-                u64_to_f64(u8s_to_u64(&vec[88..96])),
-                u64_to_f64(u8s_to_u64(&vec[96..104])),
-                u64_to_f64(u8s_to_u64(&vec[104..112])),
-                u64_to_f64(u8s_to_u64(&vec[112..120])),
-                u64_to_f64(u8s_to_u64(&vec[120..128])),
-            ];
-            let mse = u64_to_f64(u8s_to_u64(&vec[128..136]));
-            let epoch = u8s_to_u64(&vec[136..144]) as usize;
+            let mut params = Vec::with_capacity(num_params);
+            let mut dists = Vec::with_capacity(num_params);
+
+            for i in 0..num_params {
+                params.push(
+                    u64_to_f64(u8s_to_u64(&vec[(i * 8)..(i * 8 + 8)]))
+                );
+            }
+
+            for i in num_params..(2 * num_params) {
+                dists.push(
+                    u64_to_f64(u8s_to_u64(&vec[(i * 8)..(i * 8 + 8)]))
+                );
+            }
+
+            let mse = u64_to_f64(u8s_to_u64(&vec[(16 * num_params)..(16 * num_params + 8)]));
+            let epoch = u8s_to_u64(&vec[(16 * num_params + 8)..(16 * num_params + 16)]) as usize;
 
             Ok(State {
                 params,
@@ -92,30 +87,22 @@ impl State {
 
 }
 
-impl Default for State {
-
-    fn default() -> Self {
-        State::new([0.0; 8], [2.0; 8])
-    }
-
-}
-
-pub fn init_workers<T: Clone + Send + 'static>(data: Vec<(T, f64)>, func: fn([f64; 8], T) -> f64, num_workers: usize, num_params: usize) -> Vec<Channel<T>> {
+pub fn init_workers<T: Clone + Send + 'static>(data: Vec<(T, f64)>, func: fn(Vec<f64>, T) -> f64, num_workers: usize) -> Vec<Channel<T>> {
     let mut result = Vec::with_capacity(num_workers);
 
     for _ in 0..num_workers {
         let c = init_loop();
-        c.tx_from_main.send(MessageFromMain::Initialize { data: data.clone(), func, num_params }).unwrap();
+        c.tx_from_main.send(MessageFromMain::Initialize { data: data.clone(), func }).unwrap();
         result.push(c);
     }
 
     result
 }
 
-pub fn iterate<T>(state: &mut State, channels: &Vec<Channel<T>>, num_workers: usize, num_params: usize, stepss: &Vec<[i32; 8]>) -> Result<(), MPSCErr> {
+pub fn iterate<T>(state: &mut State, channels: &Vec<Channel<T>>, num_workers: usize, num_params: usize, stepss: &Vec<Vec<i32>>) -> Result<(), MPSCErr> {
 
     for (index, steps) in stepss.iter().enumerate() {
-        match channels[index % num_workers].tx_from_main.send(MessageFromMain::GetMSE { params: state.params, dists: state.dists, steps: steps.clone() }) {
+        match channels[index % num_workers].tx_from_main.send(MessageFromMain::GetMSE { params: state.params.clone(), dists: state.dists.clone(), steps: steps.clone() }) {
             Err(_) => {
                 return Err(MPSCErr::SendFailure(index % num_workers));
             }
@@ -123,7 +110,7 @@ pub fn iterate<T>(state: &mut State, channels: &Vec<Channel<T>>, num_workers: us
         }
     }
 
-    let mut best_steps: [i32; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
+    let mut best_steps = vec![0; num_params];
     let mut msg_count = 0;
 
     while msg_count < stepss.len() {
@@ -173,7 +160,7 @@ pub fn iterate<T>(state: &mut State, channels: &Vec<Channel<T>>, num_workers: us
 }
 
 // `stepss` is not a typo
-pub fn init_stepss(num_params: usize) -> Vec<[i32; 8]> {
+pub fn init_stepss(num_params: usize) -> Vec<Vec<i32>> {
 
     if num_params > 8 {
         return vec![];
@@ -194,13 +181,14 @@ pub fn init_stepss(num_params: usize) -> Vec<[i32; 8]> {
         for c in steps_c.iter() { for d in steps_d.iter() {
             for e in steps_e.iter() { for f in steps_f.iter() {
                 for g in steps_g.iter() { for h in steps_h.iter() {
-                    result.push([*a, *b, *c, *d, *e, *f, *g, *h]);
+                    result.push(vec![*a, *b, *c, *d, *e, *f, *g, *h]);
                 } }
             } }
         } }
     } }
 
     result
+
 }
 
 fn u64_to_u8s(n: u64) -> Vec<u8> {

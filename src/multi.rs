@@ -4,21 +4,20 @@ use std::thread;
 pub enum MessageFromMain<T> {
     Initialize {
         data: Vec<(T, f64)>,
-        func: fn([f64; 8], T) -> f64,
-        num_params: usize
+        func: fn(Vec<f64>, T) -> f64,
     },
     GetMSE {
-        params: [f64; 8],
-        dists: [f64; 8],
-        steps: [i32; 8]
+        params: Vec<f64>,
+        dists: Vec<f64>,
+        steps: Vec<i32>
     },
     Kill
 }
 
 pub enum MessageToMain {
     NewMSE {
-        params: [f64; 8],
-        steps: [i32; 8],
+        params: Vec<f64>,
+        steps: Vec<i32>,
         mse: f64
     }
 }
@@ -44,21 +43,19 @@ pub fn init_loop<T: Send + Clone + 'static>() -> Channel<T> {
 
 pub fn event_loop<T: Clone>(tx_to_main: mpsc::Sender<MessageToMain>, rx_from_main: mpsc::Receiver<MessageFromMain<T>>) {
     let mut data = vec![];
-    let mut func = dummy as fn([f64; 8], T) -> f64;
-    let mut num_params = 8;
+    let mut func = dummy as fn(Vec<f64>, T) -> f64;
 
     for msg in rx_from_main {
 
         match msg {
-            MessageFromMain::Initialize { data: data_, func: func_, num_params: num_params_ } => {
+            MessageFromMain::Initialize { data: data_, func: func_ } => {
                 data = data_;
                 func = func_;
-                num_params = num_params_;
             }
             MessageFromMain::GetMSE { mut params, dists, steps } => {
                 let mut se = 0.0;
 
-                for i in 0..num_params {
+                for i in 0..params.len() {
                     params[i] += dists[i] * (steps[i] as f64);
                 }
 
@@ -78,6 +75,6 @@ pub fn event_loop<T: Clone>(tx_to_main: mpsc::Sender<MessageToMain>, rx_from_mai
 
 }
 
-fn dummy<T>(_: [f64; 8], _: T) -> f64 {
+fn dummy<T>(_: Vec<f64>, _: T) -> f64 {
     panic!()
 }
