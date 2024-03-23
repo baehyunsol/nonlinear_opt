@@ -16,21 +16,23 @@ pub fn default_config() -> (
     ParamType,
     bool,
     Option<String>,
+    bool,
 ) {
     (
         8,    // number of parallel workers (it has to be at least 2)
-        256,  // iterations per worker
+        512,  // iterations per worker
         1.0,  // l2 norm of initial random parameters
-        0.9,  // l2 norm of the first step
+        0.5,  // l2 norm of the first step
 
         // step moment
         // if it's 1, the step is never updated
         // if it's 0, the previous step is completely ignored
-        0.1,
+        0.65,
 
         true,  // visualize
 
         Some(String::from("./log.txt")),  // write logs to here
+        true,  // remove existing log file
     )
 }
 

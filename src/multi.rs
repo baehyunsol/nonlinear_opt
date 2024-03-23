@@ -110,7 +110,7 @@ pub fn distribute_messages(
 pub fn event_loop(tx_to_main: mpsc::Sender<MessageToMain>, rx_from_main: mpsc::Receiver<MessageFromMain>) {
     let worker_id = rand::random::<u32>() & 0xfff_ffff;
     let worker_name = format!("worker-{worker_id:x}");
-    let (_, _, _, _, _, _, write_logs_to) = default_config();
+    let (_, _, _, _, _, _, write_logs_to, _) = default_config();
 
     write_log(
         write_logs_to.clone(),
@@ -132,14 +132,14 @@ pub fn event_loop(tx_to_main: mpsc::Sender<MessageToMain>, rx_from_main: mpsc::R
                     );
                     let mut curr_best_params = generate_random_params(
                         PARAM_SIZE,
-                        param_l2_norm,
+                        param_l2_norm * (rand::random::<ParamType>() + 0.5),
                     );
                     let mut curr_best_loss = f(&curr_best_params);
 
                     for _ in 0..(count - 1) {
                         let new_params = generate_random_params(
                             PARAM_SIZE,
-                            param_l2_norm,
+                            param_l2_norm * (rand::random::<ParamType>() + 0.5),
                         );
                         let new_loss = f(&new_params);
 

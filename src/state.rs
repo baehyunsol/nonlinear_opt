@@ -2,18 +2,20 @@ use crate::config::ParamType;
 use crate::utils::get_l2_norm;
 use std::time::Instant;
 
+// TODO: import/export to file
 pub struct State {
     pub id: usize,
     pub parameters: Vec<ParamType>,
     pub prev_step: Option<Vec<ParamType>>,
     pub loss: ParamType,
+    pub turns: usize,
     pub last_updated_at: Option<Instant>,
 }
 
 impl State {
     pub fn pretty_print(&self) -> String {
         format!(
-            "id: {}\nparameters: {} (l2_norm: {})\n  gradient: {}\n      loss: {}\n{}",
+            "id: {}\nparameters: {} (l2_norm: {})\n  gradient: {}\n      loss: {}\n     turns: {}\n{}",
             self.id,
             pretty_print_vec_float(&self.parameters, false),
             get_l2_norm(&self.parameters),
@@ -25,6 +27,7 @@ impl State {
                 )
             ).unwrap_or_else(|| String::from("None")),
             self.loss,
+            self.turns,
             if let Some(t) = &self.last_updated_at {
                 format!("last updated {} seconds ago", Instant::now().duration_since(t.clone()).as_secs())
             } else {
@@ -35,8 +38,8 @@ impl State {
 }
 
 fn pretty_print_vec_float(v: &[ParamType], show_dots: bool) -> String {
-    if v.len() > 6 {
-        pretty_print_vec_float(&v[..6], true)
+    if v.len() > 8 {
+        pretty_print_vec_float(&v[..8], true)
     }
 
     else {
