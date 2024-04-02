@@ -1,3 +1,5 @@
+use crate::config::ParamType;
+
 // TODO
 // how about a byte level LSTM?
 // input: one-hot encoded bytes

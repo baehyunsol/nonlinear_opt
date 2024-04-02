@@ -8,14 +8,15 @@ pub struct State {
     pub parameters: Vec<ParamType>,
     pub prev_step: Option<Vec<ParamType>>,
     pub loss: ParamType,
-    pub turns: usize,
+    pub successful_turns: usize,
+    pub failed_turns: usize,
     pub last_updated_at: Option<Instant>,
 }
 
 impl State {
     pub fn pretty_print(&self) -> String {
         format!(
-            "id: {}\nparameters: {} (l2_norm: {})\n  gradient: {}\n      loss: {}\n     turns: {}\n{}",
+            "id: {}\nparameters: {} (l2_norm: {})\n  gradient: {}\n      loss: {}\nsuccessful turns: {}\nfailed turns: {}\n{}",
             self.id,
             pretty_print_vec_float(&self.parameters, false),
             get_l2_norm(&self.parameters),
@@ -27,7 +28,8 @@ impl State {
                 )
             ).unwrap_or_else(|| String::from("None")),
             self.loss,
-            self.turns,
+            self.successful_turns,
+            self.failed_turns,
             if let Some(t) = &self.last_updated_at {
                 format!("last updated {} seconds ago", Instant::now().duration_since(t.clone()).as_secs())
             } else {

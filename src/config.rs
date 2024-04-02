@@ -41,3 +41,15 @@ pub fn f(parameters: &[ParamType]) -> ParamType {  // returns loss
     // impl body
     todo!()
 }
+
+// dependencies of the default visualizer
+use crate::state::State;
+use std::time::Instant;
+
+pub fn visualizer(states: &[State]) {
+    clearscreen::clear().unwrap();
+
+    for state in states.iter() {
+        println!("\n{}", state.pretty_print());
+    }
+}

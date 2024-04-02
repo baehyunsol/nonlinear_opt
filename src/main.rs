@@ -2,6 +2,7 @@ mod config;
 mod files;
 mod log;
 mod multi;
+mod samples;
 mod state;
 mod utils;
 
@@ -125,7 +126,8 @@ fn main() {
             parameters: good_random_params[distances.last().unwrap().0].0.clone(),
             prev_step: None,
             loss: good_random_params[distances.last().unwrap().0].1,
-            turns: 0,
+            successful_turns: 0,
+            failed_turns: 0,
             last_updated_at: Some(Instant::now()),
         },
         State {
@@ -133,7 +135,8 @@ fn main() {
             parameters: good_random_params[distances.last().unwrap().1].0.clone(),
             prev_step: None,
             loss: good_random_params[distances.last().unwrap().1].1,
-            turns: 0,
+            successful_turns: 0,
+            failed_turns: 0,
             last_updated_at: Some(Instant::now()),
         },
     ];
@@ -167,13 +170,16 @@ fn main() {
                             &format!("got message: with_gradient_result(state: {state_id}, loss: {best_loss:.4})"),
                         );
 
-                        states[state_id].turns += 1;
-
                         if best_loss < states[state_id].loss {
                             states[state_id].parameters = best_params.clone();
                             states[state_id].loss = best_loss;
                             states[state_id].prev_step = Some(step.clone());
                             states[state_id].last_updated_at = Some(Instant::now());
+                            states[state_id].successful_turns += 1;
+                        }
+
+                        else {
+                            states[state_id].failed_turns += 1;
                         }
 
                         if let Err(_) = channel.send(MessageFromMain::TryWithGradient {
@@ -194,7 +200,7 @@ fn main() {
                             &format!("got message: with_gradient_result_failure(state: {state_id})"),
                         );
 
-                        states[state_id].turns += 1;
+                        states[state_id].failed_turns += 1;
 
                         if let Err(_) = channel.send(MessageFromMain::TryWithGradient {
                             state_id: state_id,
@@ -213,12 +219,7 @@ fn main() {
         }
 
         if visualize {
-            clearscreen::clear().unwrap();
-            println!("total elapsed time: {} seconds", Instant::now().duration_since(started_at.clone()).as_secs());
-
-            for state in states.iter() {
-                println!("\n{}", state.pretty_print());
-            }
+            config::visualizer(&states);
         }
 
         // no need to run a busy loop

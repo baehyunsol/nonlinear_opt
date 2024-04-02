@@ -7,5 +7,5 @@ edition = "2021"
 
 [dependencies]
 chrono = "0.4.35"
-clearscreen = "2.0.1"
+clearscreen = "2.0.1"  # the default visualizer uses this crate
 rand = "0.8.5"
