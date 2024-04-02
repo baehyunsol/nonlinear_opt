@@ -1,6 +1,6 @@
 use crate::config::ParamType;
 use crate::utils::get_l2_norm;
-use std::time::Instant;
+use h_time::Date;
 
 // TODO: import/export to file
 pub struct State {
@@ -10,7 +10,8 @@ pub struct State {
     pub loss: ParamType,
     pub successful_turns: usize,
     pub failed_turns: usize,
-    pub last_updated_at: Option<Instant>,
+    pub last_updated_at: Option<Date>,
+    // TODO: track how loss changes over time (for ex: every 1 minutes)
 }
 
 impl State {
@@ -31,7 +32,7 @@ impl State {
             self.successful_turns,
             self.failed_turns,
             if let Some(t) = &self.last_updated_at {
-                format!("last updated {} seconds ago", Instant::now().duration_since(t.clone()).as_secs())
+                format!("last updated {} seconds ago", Date::now().duration_since(&t).into_secs())
             } else {
                 String::new()
             },

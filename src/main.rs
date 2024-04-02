@@ -6,6 +6,7 @@ mod samples;
 mod state;
 mod utils;
 
+use h_time::Date;
 use log::{initialize_log_file, write_log};
 use multi::{
     init_channels,
@@ -128,7 +129,7 @@ fn main() {
             loss: good_random_params[distances.last().unwrap().0].1,
             successful_turns: 0,
             failed_turns: 0,
-            last_updated_at: Some(Instant::now()),
+            last_updated_at: Some(Date::now()),
         },
         State {
             id: 1,
@@ -137,7 +138,7 @@ fn main() {
             loss: good_random_params[distances.last().unwrap().1].1,
             successful_turns: 0,
             failed_turns: 0,
-            last_updated_at: Some(Instant::now()),
+            last_updated_at: Some(Date::now()),
         },
     ];
 
@@ -174,7 +175,7 @@ fn main() {
                             states[state_id].parameters = best_params.clone();
                             states[state_id].loss = best_loss;
                             states[state_id].prev_step = Some(step.clone());
-                            states[state_id].last_updated_at = Some(Instant::now());
+                            states[state_id].last_updated_at = Some(Date::now());
                             states[state_id].successful_turns += 1;
                         }
 

@@ -2,7 +2,7 @@
 pub type ParamType = f32;
 
 // parameters.len()
-pub const PARAM_SIZE: usize = 32;
+pub const PARAM_SIZE: usize = crate::samples::graph::VERTEX_COUNT * 2;
 
 // make sure that `f` never returns a value greater than this
 pub const VERY_BIG_LOSS: ParamType = 3e20;
@@ -46,6 +46,7 @@ pub fn f(parameters: &[ParamType]) -> ParamType {  // returns loss
 use crate::state::State;
 use std::time::Instant;
 
+// if config.visualize is true, this function is called every iteration (about 1s)
 pub fn visualizer(states: &[State]) {
     clearscreen::clear().unwrap();
 
