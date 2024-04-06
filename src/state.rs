@@ -11,10 +11,38 @@ pub struct State {
     pub successful_turns: usize,
     pub failed_turns: usize,
     pub last_updated_at: Option<Date>,
-    // TODO: track how loss changes over time (for ex: every 1 minutes)
+    pub losses_over_time: Vec<(Date, ParamType)>,
 }
 
 impl State {
+    pub fn update_best_loss(
+        &mut self,
+        new_params: Vec<ParamType>,
+        new_loss: ParamType,
+        prev_step: Vec<ParamType>,
+    ) {
+        let now = Date::now();
+
+        self.parameters = new_params;
+        self.loss = new_loss;
+        self.prev_step = Some(prev_step);
+        self.last_updated_at = Some(now.clone());
+        self.successful_turns += 1;
+
+        if self.losses_over_time.len() < 64 {
+            self.losses_over_time.push((now, new_loss));
+        }
+
+        else {
+            let last_check_point = self.losses_over_time.pop().unwrap().0;
+
+            if now.duration_since(&last_check_point).into_minutes() > 3 {
+                self.losses_over_time.push((now, new_loss));
+                self.losses_over_time = self.losses_over_time[1..].to_vec();
+            }
+        }
+    }
+
     pub fn pretty_print(&self) -> String {
         format!(
             "id: {}\nparameters: {} (l2_norm: {})\n  gradient: {}\n      loss: {}\nsuccessful turns: {}\nfailed turns: {}\n{}",

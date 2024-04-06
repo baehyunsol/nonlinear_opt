@@ -9,6 +9,7 @@ use crate::config::ParamType;
 
 const TOKEN_DIMENSION: usize = 256;
 const HIDDEN_STATE_DIMENSION: usize = 1024;
+const OUTPUT_DIMENSION: usize = 256;
 
 // file:///home/baehyunsol/Downloads/laptop/240117/Documents/SNU/DL/1114.html
 

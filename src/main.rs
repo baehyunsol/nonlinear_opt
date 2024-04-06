@@ -15,10 +15,9 @@ use multi::{
 };
 use state::State;
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 fn main() {
-    let started_at = Instant::now();
     let (
         num_workers,
         iter_per_worker,
@@ -121,6 +120,7 @@ fn main() {
 
     distances.sort_by(|(_, _, dist1), (_, _, dist2)| dist1.partial_cmp(dist2).unwrap());
 
+    let now = Date::now();
     let mut states = vec![
         State {
             id: 0,
@@ -129,7 +129,8 @@ fn main() {
             loss: good_random_params[distances.last().unwrap().0].1,
             successful_turns: 0,
             failed_turns: 0,
-            last_updated_at: Some(Date::now()),
+            last_updated_at: Some(now.clone()),
+            losses_over_time: vec![(now, good_random_params[distances.last().unwrap().0].1)],
         },
         State {
             id: 1,
@@ -138,7 +139,8 @@ fn main() {
             loss: good_random_params[distances.last().unwrap().1].1,
             successful_turns: 0,
             failed_turns: 0,
-            last_updated_at: Some(Date::now()),
+            last_updated_at: Some(now.clone()),
+            losses_over_time: vec![(now, good_random_params[distances.last().unwrap().1].1)],
         },
     ];
 
@@ -172,11 +174,11 @@ fn main() {
                         );
 
                         if best_loss < states[state_id].loss {
-                            states[state_id].parameters = best_params.clone();
-                            states[state_id].loss = best_loss;
-                            states[state_id].prev_step = Some(step.clone());
-                            states[state_id].last_updated_at = Some(Date::now());
-                            states[state_id].successful_turns += 1;
+                            states[state_id].update_best_loss(
+                                best_params.clone(),
+                                best_loss,
+                                step.clone(),
+                            );
                         }
 
                         else {
